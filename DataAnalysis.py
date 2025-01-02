@@ -51,4 +51,17 @@ class DataPreparation:
         heritage_df = pd.concat([heritage_coor, heritage_none], ignore_index=True)
         heritage_gdf = gpd.GeoDataFrame(heritage_df, geometry='geometry', crs = 'EPSG:4326')
         return heritage_gdf, heritage_coor, heritage_none
-        
+
+    def number_report(gdf):
+        for i in range(len(gdf)):
+            desc = gdf.loc[i, 'Культурное наследие (описание)']
+            if re.search('рег.номер', desc) != None:
+                if re.search('35-', desc):
+                    desc = desc.split('рег.номер')[1].replace(' ', '').replace(')', '')
+                    gdf.loc[i, 'учетный номер'] = desc
+                    gdf.loc[i, 'Номер в реестре'] = 0
+                else:
+                    desc = desc.split('рег.номер')[1].replace(' ', '').replace(')', '')
+                    gdf.loc[i, 'Номер в реестре'] = desc
+                    gdf.loc[i, 'учетный номер'] = 0
+        return gdf
