@@ -1,0 +1,124 @@
+[
+
+    {
+        "spatial_aspect":
+        {
+            "public_transport": 0.5,
+            "public_transport_variable": 0.1,
+            "road": 0.3,
+            "improve_road": 0.1,
+            "cafe": 0.5,
+            "markets": 0.5,
+            "heritahe_nearby": 0.1,
+            "arch_style": 0.3,
+            "build_year": 0.3,
+            "build_floor": 0.3
+        },
+        "law_aspect":
+        {
+            "subject_of_protection":
+            {
+                "0": 1,
+                "1": 1,
+                "2": 0.75,
+                "3": 0.75,
+                "4": 0.25,
+                "5": 0.25,
+                "6": 0.25,
+                "7": 0.0
+            },
+            "encumbrances":
+            {
+                "False": 1.0,
+                "True": 0
+            },
+            "permitted_land_use":
+            {
+                "buildings": 1
+            },
+            "cadastral_integrity":
+            {
+                "False": 1.0,
+                "True": 0          
+            }
+        },
+        "economic_aspect":
+        {
+            "cadstral_value_land":
+            {
+                "q1": 1,
+                "q2": 0.75,
+                "q3": 0.5,
+                "q4": 0.25
+            },
+            "cadstral_value_building":
+            {
+                "q1": 1,
+                "q2": 0.75,
+                "q3": 0.5,
+                "q4": 0.25
+            },
+            "support_measures":
+            {
+                "2": 1.0,
+                "1": 0.5,
+                "0": 0
+            }
+        },
+        "physical_aspect":
+        {
+            "percentage_of_construction": 
+            {
+            
+                "20": 0.25,
+                "40": 0.5,
+                "60": 1.0,
+                "80": 0.5,
+                "90": 0.25,
+                "100": 0.0
+            },
+            "material": 
+            {
+                "name": 
+                {
+                    "unknown": 0.5,
+                    "wood": 0.0,
+                    "wood, stone": 0.5,
+                    "stone": 1
+                }
+            },
+            "function":
+            {
+                "industrial": 0,
+                "commercial": 0.5,
+                "living":1.0
+            },
+            "using":
+            {
+                "this_moment": 1,
+                "less_a_year": 0.5,
+                "more_years": 0
+            },
+            "building_area":
+            {
+                "this_moment": 1,
+                "less_a_year": 0.5,
+                "more_years": 0
+            },
+            "engineering_system":
+            {
+                "water": 0.2,
+                "hot_water": 0.2,
+                "electricity": 0.2,
+                "wastewater_disposal": 0.2,
+                "fire alarm system": 0.2
+            },
+            "last_restavration":
+            {
+                "30": 1,
+                "60": 0.5,
+                "100": 0.2
+            }
+        }
+    }
+]
