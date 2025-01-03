@@ -55,6 +55,7 @@ class DataPreparation:
     def number_report(gdf):
         for i in range(len(gdf)):
             desc = gdf.loc[i, 'Культурное наследие (описание)']
+            # Выделяем реестровые номера в отдельный столбец
             if re.search('рег.номер', desc) != None:
                 if re.search('35-', desc):
                     desc = desc.split('рег.номер')[1].replace(' ', '').replace(')', '')
@@ -64,4 +65,92 @@ class DataPreparation:
                     desc = desc.split('рег.номер')[1].replace(' ', '').replace(')', '')
                     gdf.loc[i, 'Номер в реестре'] = desc
                     gdf.loc[i, 'учетный номер'] = 0
+            # Объединяем столбцы с годом заверешния строительства и года ввода в эусплуатацию
+            if len(str(gdf.loc[i, 'Год завершения строительства'])) < 2:
+                gdf.loc[i, 'Год завершения строительства'] = gdf.loc[i, 'Год ввода в эксплуатацию']
         return gdf
+
+
+
+from nltk.tokenize import word_tokenize
+import nltk
+from string import punctuation
+import pymorphy3
+#записываем в morph лемматизатор
+punctuations = list(punctuation)
+nltk.download('stopwords')
+nltk.download('punkt_tab')
+stopwords = nltk.corpus.stopwords.words('russian')
+morph = pymorphy3.MorphAnalyzer()
+
+class DataMethodPreparation:
+    # Функция для подсчета совпадений
+    def count_matches(protection, keywords):
+        return sum(1 for keyword in keywords if re.search(keyword, protection))
+
+    def protection(gdf):
+        for j in range(len(gdf)):
+            text = str(gdf.loc[j, 'описание предмета охраны'])
+            tokens = word_tokenize(text)
+            tokens_without_punct = [i for i in tokens if i not in punctuations]
+            low_tokens = [i.lower() for i in tokens_without_punct]
+            lemms = [morph.parse(i)[0].normal_form for i in low_tokens]
+            gdf.loc[j, 'protection'] =  ' '.join(str(el) for el in lemms)
+
+        keywords = [
+            'градостроительный значение',
+            'объёмно-пространственный',
+            'композиция и архитектурно-художественный оформление фасад',
+            'планировочный структура и элемент архитектурный оформление интерьер здание'
+        ]
+            
+        # Применяем функцию ко всем элементам DataFrame
+        gdf['count'] = gdf['protection'].apply(lambda x: DataMethodPreparation.count_matches(str(x), keywords))
+        return(gdf)
+    
+    def functional_landuse(gdf):
+        for i in range(len(gdf)):
+            if gdf.loc[i, 'usage'] in ['эксплуатация и обслуживание здания заочной школы',
+                                                'объекты культуры и искусства районного и местного значения',
+                                                'для эксплуатации и обслуживания памятника архитектуры (дом Засецких) и здания гаража',
+                                                'Индивидуальные жилые дома',
+                                                'индивидуальные жилые дома',
+                                                'нежилое здание',
+                                                'эксплуатация и обслуживание административного здания',
+                                                'для эксплуатации и обслуживания многоквартирного дома',
+                                                'для эксплуатации и обслуживания жилого дома',
+                                                'эксплуатация и обслуживание нежилых помещений здания',
+                                                'эксплуатация административного здания',
+                                                'для эксплуатации и обслуживания здания детской музыкальной школы', 'музей']:
+                gdf.loc[i, 'land_use'] = 'buildings'
+
+            elif gdf.loc[i, 'usage'] in ['эксплуатация и обслуживание здания санитарно-эпидемиологической станции', 'для ведения личного подсобного хозяйства', 'Для ведения религиозно-обрядовой деятельности']:
+                gdf.loc[i, 'land_use'] = 'other'
+        return(gdf)
+
+    def functional_building(gdf):
+        for i in range(len(gdf)):
+            if gdf.loc[i, 'Функциональная группа'] in ['Дома малоэтажной жилой застройки, в том числе индивидуальной жилой застройки - индивидуальные, малоэтажные блокированные (таунхаусы)', 'Многоквартирные дома (дома средне- и многоэтажной жилой застройки)']:
+                gdf.loc[i, 'function'] = 'living'
+            elif gdf.loc[i, 'Функциональная группа'] == 'Учебные, спортивные объекты, объекты культуры и искусства, культовые объекты, музеи, лечебно-оздоровительные и общественного назначения объекты':
+                gdf.loc[i, 'function'] = 'commercial'
+            elif gdf.loc[i, 'Функциональная группа'] in ['Сооружения', 'Административные и бытовые объекты']:
+                gdf.loc[i, 'function'] = "industrial"
+        return(gdf)
+
+    def material(gdf):
+        for i in range(len(gdf)):
+            if gdf.loc[i, 'Материал наружных стен'] == 'Рубленые':
+                gdf.loc[i, 'material'] = 'wood'
+            elif gdf.loc[i, 'Материал наружных стен'] == 'Кирпичные':
+                gdf.loc[i, 'material'] = 'stone'
+            else:
+                gdf.loc[i, 'material'] = 'unknown'
+        return(gdf)
+
+
+    def start_all(gdf):
+        DataMethodPreparation.protection(gdf)
+        DataMethodPreparation.functional_landuse(gdf)
+        DataMethodPreparation.functional_building(gdf)
+        DataMethodPreparation.material(gdf)
