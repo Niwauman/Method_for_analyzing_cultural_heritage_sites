@@ -1,3 +1,12 @@
+import pandas as pd
+import geopandas as gpd
+from shapely.geometry import Point, Polygon, MultiPoint
+
+from objectnat import get_boundary
+from objectnat import get_accessibility_isochrones
+from objectnat import get_walk_graph
+from objectnat import get_visibility
+
 import json
 # Закружаем критерии оценки
 with open("Example_files/criteria.json", encoding="UTF-8") as file_in:
@@ -84,7 +93,58 @@ class AspectPhysical:
         return(gdf)
 
 class AspectSpatial:
-    print()
+
+# get isochrones and calculate services
+    def services(gdf, shop, cafe, public_transport, G_walk):
+        for i in range(len(gdf)):
+            points = gpd.GeoDataFrame(geometry=[gdf.loc[i,'geometry']], crs=4326).to_crs(G_walk.graph['crs'])
+            isochrones, stops, routes = get_accessibility_isochrones(
+            points=points,
+            weight_type="time_min",
+            weight_value=10,
+            graph_nx=G_walk
+            )
+            gdf.loc[i, 'count_shop'] = len(shop[shop.geometry.within(isochrones.geometry[0])])
+            gdf.loc[i, 'count_cafe'] = len(cafe[cafe.geometry.within(isochrones.geometry[0])])
+            gdf.loc[i, 'count_public_transport'] = len(public_transport[public_transport.geometry.within(isochrones.geometry[0])])
+            return(gdf)
+
+    def vision(gdf_origin, obstacles,building_osm): # создание полигонов видимости
+        gdf=gdf_origin.copy()
+        for i in range(len(building_osm)):
+            poly = building_osm.loc[i,'geometry'].buffer(4)
+            poly_2 = building_osm.loc[i,'geometry']
+            for j in range(len(gdf)):
+                point = gdf.loc[j,'geometry']
+                if poly.contains(point):
+                    gdf.loc[j,'geometry'] = poly_2
+        for i in range(len(gdf)):
+            dict_vision_poly = {}
+            if isinstance(gdf.loc[i, 'geometry'], Point) != True:
+                points_list = list(gdf.geometry[i].exterior.coords)
+                string = ''
+                for string_p in points_list:
+                    vision_poly = get_visibility(Point([string_p]), obstacles, 300)
+                    dict_vision_poly[string_p] = vision_poly
+            else:
+                vision_poly = get_visibility(gdf.loc[i, 'geometry'], obstacles, 300)
+                dict_vision_poly[gdf.loc[i, 'geometry']] = vision_poly 
+        
+        vision_poly = gpd.GeoDataFrame(geometry=[j for j in dict_vision_poly.values()], crs=32636)
+        unioned_polygon = vision_poly.unary_union
+        gdf.loc[i, 'geometry'] = unioned_polygon
+        return(gdf)       
+
+    def start_all(gdf,building, shop, cafe, public_transport):
+        # Fetching the territory boundary using the OSM ID for the specific relation.
+        # The OSM ID refers to a particular area on OpenStreetMap.
+        bounds = get_boundary(osm_id=1327509)  # OSM ID for https://www.openstreetmap.org/relation/1114252
+        # Generating a walking graph for the defined boundary.
+        G_walk = get_walk_graph(polygon=bounds)
+        AspectSpatial.services(gdf,shop, cafe, public_transport, G_walk)
+        return(gdf)
+    
+
 
 class AspectEconomic:
     def cad_cost_estimation_building(gdf):
