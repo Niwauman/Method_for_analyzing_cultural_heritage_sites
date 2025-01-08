@@ -45,3 +45,6 @@ ENV/
 *.sol
 *.mps
 Example_files/All_heritage.csv
+test_2.geojson
+test.geojson
+/cache

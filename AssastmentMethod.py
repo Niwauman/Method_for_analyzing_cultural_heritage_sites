@@ -45,6 +45,9 @@ class AspectLaw:
         gdf=AspectLaw.subject_of_protection(gdf)
         gdf=AspectLaw.permitted_land_use(gdf)
         gdf=AspectLaw.cadastral_integrity(gdf)
+
+        # Итоговый бал по аспекту
+        gdf['total_law_score'] = gdf['score_cadastral_integrity'] + gdf['score_land_use'] + gdf['score_protection']
         return(gdf)
 
 class AspectPhysical:
@@ -74,6 +77,8 @@ class AspectPhysical:
             if gdf.loc[i, 'area'] == 0:
                 percent_build = 100
             else:
+                if len(gdf.loc[i, 'Количество этажей (в том числе подземных)']) > 2:
+                    gdf.loc[i, 'Количество этажей (в том числе подземных)'] = gdf.loc[i, 'Количество этажей (в том числе подземных)'].split('-')[0]
                 percent_build = (gdf.loc[i, 'Площадь, кв.м'] / int(gdf.loc[i, 'Количество этажей (в том числе подземных)'])) / gdf.loc[i, 'area'] * 100
             gdf.loc[i, 'percentage_of_construction'] = percent_build
             percent_table_prev = 0.0
@@ -82,20 +87,66 @@ class AspectPhysical:
                     gdf.loc[i, 'score_percentage_of_construction'] = criteria[0]['physical_aspect']['percentage_of_construction'][percent_table]      
                 percent_table_prev = float(percent_table)
         return(gdf)
+    
+    def accident(gdf):
+        for i in range(len(gdf)):
+            if gdf.loc[i,'Объект признан аварийным '] == 'да':
+                gdf.loc[i,'score_accident'] = 0
+            else:
+                gdf.loc[i,'score_accident'] = 1
+        return(gdf)
+    
+    def recover_engineering_communications(gdf):
+        for i in range(len(gdf)):
+            if gdf.loc[i,'Объект признан аварийным '] == 'да':
+                gdf.loc[i,'water_cold'] = 0
+                gdf.loc[i,'water_hot'] = 0
+                gdf.loc[i,'water_out'] = 0
+                gdf.loc[i,'electricity'] = 1
+                gdf.loc[i,'fire_system'] = 0
+
+            if gdf.loc[i,'Совокупный износ'] > 0.8:
+                gdf.loc[i,'water_cold'] = 1
+                gdf.loc[i,'water_hot'] = 0
+                gdf.loc[i,'water_out'] = 1
+                gdf.loc[i,'electricity'] = 1
+                gdf.loc[i,'fire_system'] = 0
+            elif gdf.loc[i,'Совокупный износ'] <= 0.8 and gdf.loc[i,'Совокупный износ'] >= 0.5:
+                gdf.loc[i,'water_cold'] = 1
+                gdf.loc[i,'water_hot'] = 1
+                gdf.loc[i,'water_out'] = 1
+                gdf.loc[i,'electricity'] = 1
+                gdf.loc[i,'fire_system'] = 0
+            else:
+                gdf.loc[i,'water_cold'] = 1
+                gdf.loc[i,'water_hot'] = 1
+                gdf.loc[i,'water_out'] = 1
+                gdf.loc[i,'electricity'] = 1
+                gdf.loc[i,'fire_system'] = 1
+        return(gdf)
+
 
 
     def start_all(gdf):
+
         # Оценка износа здания
         gdf['score_deterioration'] = 1 - gdf['Совокупный износ']
         gdf = AspectPhysical.material(gdf)
         gdf = AspectPhysical.function(gdf)
         gdf = AspectPhysical.percentage_of_construction(gdf)
+        gdf = AspectPhysical.accident(gdf)
+        gdf = AspectPhysical.recover_engineering_communications(gdf)
+        gdf['score_engineering_communications'] = gdf['water_cold'] * 0.2 + gdf['water_hot']*0.2+gdf['water_out']*0.2+gdf['electricity']*0.2+gdf['fire_system']*0.2
+
+        # Итоговый бал по аспекту
+        gdf['total_physical_score'] = gdf['score_deterioration']+ gdf['score_material'] + gdf['score_function'] + gdf['score_percentage_of_construction']  + gdf['score_accident'] + gdf['score_engineering_communications']
         return(gdf)
 
 class AspectSpatial:
 
 # get isochrones and calculate services
     def services(gdf, shop, cafe, public_transport, G_walk):
+
         for i in range(len(gdf)):
             points = gpd.GeoDataFrame(geometry=[gdf.loc[i,'geometry']], crs=4326).to_crs(G_walk.graph['crs'])
             isochrones, stops, routes = get_accessibility_isochrones(
@@ -111,13 +162,17 @@ class AspectSpatial:
 
     def vision(gdf_origin, obstacles,building_osm): # создание полигонов видимости
         gdf=gdf_origin.copy()
+        gdf = gdf.to_crs('EPSG:32637')
+        obstacles = obstacles.to_crs('EPSG:32637')
+        building_osm = building_osm.to_crs('EPSG:32637')
         for i in range(len(building_osm)):
-            poly = building_osm.loc[i,'geometry'].buffer(4)
+            poly = building_osm.loc[i,'geometry'].buffer(5)
             poly_2 = building_osm.loc[i,'geometry']
             for j in range(len(gdf)):
                 point = gdf.loc[j,'geometry']
                 if poly.contains(point):
                     gdf.loc[j,'geometry'] = poly_2
+
         for i in range(len(gdf)):
             dict_vision_poly = {}
             if isinstance(gdf.loc[i, 'geometry'], Point) != True:
@@ -130,18 +185,40 @@ class AspectSpatial:
                 vision_poly = get_visibility(gdf.loc[i, 'geometry'], obstacles, 300)
                 dict_vision_poly[gdf.loc[i, 'geometry']] = vision_poly 
         
-        vision_poly = gpd.GeoDataFrame(geometry=[j for j in dict_vision_poly.values()], crs=32636)
-        unioned_polygon = vision_poly.unary_union
-        gdf.loc[i, 'geometry'] = unioned_polygon
-        return(gdf)       
+            vision_poly = gpd.GeoDataFrame(geometry=[j for j in dict_vision_poly.values()], crs=32637)
+            unioned_polygon = vision_poly.unary_union
+            gdf.loc[i, 'geometry'] = unioned_polygon
+        return(gdf)
+    
+    def score_spatial(gdf):
+        gdf['score_services'] = 0
+        gdf['score_transport'] = 0
+        for i in range(len(gdf)):
+            if gdf.loc[i, 'count_shop'] >=1:
+                gdf['score_services'] += 0.5
+            
+            if gdf.loc[i, 'count_cafe'] >=1:
+                gdf['score_services'] += 0.5
+            
+            if gdf.loc[i, 'count_public_transport'] >=2:
+                gdf['score_transport'] += 1
+        return(gdf)
 
-    def start_all(gdf,building, shop, cafe, public_transport):
+    def start_all(gdf,shop, cafe, public_transport,building):
         # Fetching the territory boundary using the OSM ID for the specific relation.
         # The OSM ID refers to a particular area on OpenStreetMap.
         bounds = get_boundary(osm_id=1327509)  # OSM ID for https://www.openstreetmap.org/relation/1114252
         # Generating a walking graph for the defined boundary.
         G_walk = get_walk_graph(polygon=bounds)
-        AspectSpatial.services(gdf,shop, cafe, public_transport, G_walk)
+        shop = shop.to_crs(G_walk.graph['crs'])
+        cafe = cafe.to_crs(G_walk.graph['crs'], inplace=True)
+        public_transport = public_transport.to_crs(G_walk.graph['crs'])
+        building = building.to_crs(G_walk.graph['crs'])
+        gdf = AspectSpatial.services(gdf,shop, cafe, public_transport, G_walk)
+        gdf=AspectSpatial.score_spatial(gdf)
+
+        # Итоговый бал по аспекту
+        gdf['total_spatial_score'] = gdf['score_services'] + gdf['score_transport']
         return(gdf)
     
 
@@ -182,13 +259,16 @@ class AspectEconomic:
     def start_all(gdf):
         gdf=AspectEconomic.cad_cost_estimation_building(gdf)
         gdf=AspectEconomic.cad_cost_estimation_land(gdf)
+
+        # Итоговый бал по аспекту
+        gdf['total_economic_score'] = gdf['score_cadstral_value_building'] + gdf['score_cadstral_value_land']
         return(gdf)
 
 class General:
     def calculate_scores(gdf):
-        gdf['total_physical_score'] = gdf['score_percentage_of_construction'] + gdf['score_material'] + gdf['score_function'] + gdf['score_deterioration']
+        gdf['total_physical_score'] = gdf['score_percentage_of_construction'] + gdf['score_material'] + gdf['score_function'] + gdf['score_deterioration'] + gdf['score_accident']
         gdf['total_spatial_score'] = 0
-        gdf['total_law_score'] = gdf['score_adastral_integrity'] + gdf['score_land_use'] + gdf['score_protection']
+        gdf['total_law_score'] = gdf['score_cadastral_integrity'] + gdf['score_land_use'] + gdf['score_protection']
         gdf['total_economic_score'] = gdf['score_cadstral_value_building'] + gdf['score_cadstral_value_land']
         gdf['total_score'] = gdf['total_physical_score'] + gdf['total_spatial_score'] + gdf['total_law_score'] + gdf['total_economic_score']
         return(gdf)
