@@ -12,6 +12,10 @@ import json
 with open("Example_files/criteria.json", encoding="UTF-8") as file_in:
     criteria = json.load(file_in)
 
+# Закружаем критерии риски
+with open("Example_files/risks.json", encoding="UTF-8") as file_in:
+    risks = json.load(file_in)
+
 class AspectLaw:
     #subject_of_protection
     def subject_of_protection(gdf):
@@ -29,6 +33,7 @@ class AspectLaw:
             for land_use_table in criteria[0]['law_aspect']['permitted_land_use']:
                 if land_use_table == land_use_build:
                     gdf.loc[i, 'score_land_use'] = criteria[0]['law_aspect']['permitted_land_use'][land_use_table]
+            gdf['score_land_use'] = gdf['score_land_use'].fillna(0)
         return(gdf)
 
     # cadastral_integrity
@@ -155,9 +160,18 @@ class AspectSpatial:
             weight_value=10,
             graph_nx=G_walk
             )
-            gdf.loc[i, 'count_shop'] = len(shop[shop.geometry.within(isochrones.geometry[0])])
-            gdf.loc[i, 'count_cafe'] = len(cafe[cafe.geometry.within(isochrones.geometry[0])])
-            gdf.loc[i, 'count_public_transport'] = len(public_transport[public_transport.geometry.within(isochrones.geometry[0])])
+            try:
+                gdf.loc[i, 'count_shop'] = len(shop[shop.geometry.within(isochrones.geometry[0])])
+            except AttributeError:
+                gdf.loc[i, 'count_shop'] = 0
+            try:
+                gdf.loc[i, 'count_cafe'] = len(cafe[cafe.geometry.within(isochrones.geometry[0])])
+            except AttributeError:
+                gdf.loc[i, 'count_cafe'] = 0
+            try:
+                gdf.loc[i, 'count_public_transport'] = len(public_transport[public_transport.geometry.within(isochrones.geometry[0])])
+            except AttributeError:
+                gdf.loc[i, 'count_public_transport'] = 0
             return(gdf)
 
     def vision(gdf_origin, obstacles,building_osm): # создание полигонов видимости
@@ -256,12 +270,18 @@ class AspectEconomic:
             gdf.loc[i, 'score_cadstral_value_land'] = criteria[0]['economic_aspect']['cadstral_value_land'][q]
         return(gdf)
     
+    def support_program(gdf):
+        for i in range(len(gdf)):
+            gdf.loc[i, 'score_support_measures'] = criteria[0]['economic_aspect']['support_measures'][gdf.loc[i,'actual_program']]
+        return(gdf)
+    
     def start_all(gdf):
         gdf=AspectEconomic.cad_cost_estimation_building(gdf)
         gdf=AspectEconomic.cad_cost_estimation_land(gdf)
+        gdf=AspectEconomic.support_program(gdf)
 
         # Итоговый бал по аспекту
-        gdf['total_economic_score'] = gdf['score_cadstral_value_building'] + gdf['score_cadstral_value_land']
+        gdf['total_economic_score'] = gdf['score_cadstral_value_building'] + gdf['score_cadstral_value_land'] + gdf['score_support_measures']
         return(gdf)
 
 class General:
@@ -271,4 +291,16 @@ class General:
         gdf['total_law_score'] = gdf['score_cadastral_integrity'] + gdf['score_land_use'] + gdf['score_protection']
         gdf['total_economic_score'] = gdf['score_cadstral_value_building'] + gdf['score_cadstral_value_land']
         gdf['total_score'] = gdf['total_physical_score'] + gdf['total_spatial_score'] + gdf['total_law_score'] + gdf['total_economic_score']
+        return(gdf)
+    def calculate_scores(gdf):
+        gdf['total_score'] = gdf['total_physical_score'] + gdf['total_spatial_score'] + gdf['total_law_score'] + gdf['total_economic_score']
+        return(gdf)
+    def risks_assastment(gdf):
+        gdf['risks']=''
+        for j in range(len(gdf)):
+            for aspect in ['physical_aspect','law_aspect', 'economic_aspect']:
+                for risk in risks[0][aspect]:
+                    if float(gdf.loc[j, risks[0][aspect][risk]['indicator']]) <= float(risks[0][aspect][risk]['value']):
+                        gdf.loc[j, 'risks'] += str(risks[0][aspect][risk]['id']) + ';'
+            gdf.loc[j, 'risks_num'] = len(gdf.loc[j, 'risks'].split(';')) - 1
         return(gdf)

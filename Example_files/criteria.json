@@ -9,7 +9,7 @@
             "improve_road": 0.1,
             "cafe": 0.5,
             "markets": 0.5,
-            "heritahe_nearby": 0.1,
+            "heritage_nearby": 0.1,
             "arch_style": 0.3,
             "build_year": 0.3,
             "build_floor": 0.3

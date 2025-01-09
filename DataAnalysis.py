@@ -2,6 +2,7 @@ import pandas as pd
 import geopandas as gpd
 from tqdm import tqdm
 import re
+import osmnx as ox
 
 class DataPreparation:
     def year_finder(df):
@@ -165,3 +166,17 @@ class DataMethodPreparation:
         DataMethodPreparation.functional_building(gdf)
         DataMethodPreparation.material(gdf)
         return(gdf)
+    
+class DataDonwload:
+    def parcer_osm(region, tag_str, tag_def = True): #На первом месте указываем тег, на втором его значение по умолчанию выбираются все значения
+        tags = {tag_str: tag_def}
+        objects = ox.features.features_from_polygon(region.unary_union, tags)
+        return objects
+
+    def data_osm(city):
+        region = ox.geocode_to_gdf(query=city).reset_index()
+        building_osm = DataDonwload.parcer_osm(region,'building').reset_index()
+        shop = DataDonwload.parcer_osm(region,'shop').reset_index()
+        cafe = DataDonwload.parcer_osm(region,'amenity', ['bar', 'cafe', 'fast_food', 'food_court', 'pub', 'restaurant']).reset_index()
+        public_transport = DataDonwload.parcer_osm(region,'public_transport').reset_index()
+        return(region, building_osm, shop, cafe, public_transport)
