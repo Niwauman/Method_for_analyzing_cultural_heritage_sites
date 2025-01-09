@@ -1,0 +1,111 @@
+[
+    {
+        "physical_aspect":
+        {
+            "Износ здания":
+            {
+                "id": 10001,
+                "desc":"Физический износ конструкций",
+                "indicator":"score_deterioration",
+                "value": 0.5
+            },
+            "Вандализм, поджог":
+            {
+                "id": 10002,
+                "desc":"",
+                "indicator":"score_deterioration",
+                "value": 0.5
+            },
+            "Состояние коммуникаций":
+            {
+                "id": 10003,
+                "desc":"Физический износ коммуникаций",
+                "indicator":"score_engineering_communications",
+                "value": 0.5
+            },
+            "Непредвиденное состояние здания":
+            {
+                "id": 10004,
+                "desc":"Дерево самое сложное",
+                "indicator":"score_material",
+                "value": 0.5
+            }
+        },
+
+        "spatial_aspect":
+        {
+            "Доступность":
+            {
+                "id": 20001,
+                "desc":"Оценка транспортной доступности",
+                "indicator":"score_transport",
+                "value": 0.5
+            },
+            "Инфраструктура вокруг":
+            {
+                "id": 20002,
+                "desc":"Наличие сервисов, инфраструктуры вокруг",
+                "indicator":"score_services",
+                "value": 0.5
+            },
+            "Утрата исторического контекста":
+            {
+                "id": 20003,
+                "desc":"Архитектурно-историческая ценность",
+                "indicator":"score_services",
+                "value": 0
+            }
+        },
+
+        "law_aspect":
+        {
+            
+            "Охранный статус":
+            {
+                "id": 30001,
+                "desc":"Накладывает ограничения на изменения элементов",
+                "indicator":"score_protection",
+                "value": 0.5
+            },
+            "Функциональное устаревание здания":
+            {
+                "id": 30002,
+                "desc":"Современные требования к зданиям отличаются от предыдущих",
+                "indicator":"score_function",
+                "value": 0
+            },
+            "Множество собственников":
+            {
+                "id": 30002,
+                "desc":"",
+                "indicator":"score_cadastral_integrity",
+                "value": 0
+            },
+            "Кадастровая раздробленность":
+            {
+                "id": 30003,
+                "desc":"",
+                "indicator":"score_cadastral_integrity",
+                "value": 0
+            }
+        },
+
+        "economic_aspect":
+        {
+            "Невозможность доп. Прибыли":
+            {
+                "id": 40001,
+                "desc":"",
+                "indicator":"percentage_of_construction",
+                "value": 0.25
+            },
+            "Невозможность получения помощи в рамках программ":
+            {
+                "id": 40002,
+                "desc":"",
+                "indicator":"percentage_of_construction",
+                "value": 0
+            }
+        }
+    }
+]
