@@ -55,7 +55,7 @@ class AspectLaw:
 
         # Итоговый бал по аспекту
         gdf['total_law_score'] = 1.25 * gdf['score_cadastral_integrity'] + 1.33 * gdf['score_land_use'] + 1.42 * gdf['score_protection']
-        gdf['total_law_percent'] = round(gdf['total_law_score'] / 3 * 100, 2)
+        gdf['total_law_percent'] = round(gdf['total_law_score'] / 4 * 100, 2)
         return(gdf)
 
 class AspectPhysical:
@@ -148,7 +148,7 @@ class AspectPhysical:
 
         # Итоговый бал по аспекту
         gdf['total_physical_score'] = 1.19 * gdf['score_deterioration'] + 1.05 * gdf['score_material'] + 1.10 * gdf['score_function'] + 1.29 * gdf['score_percentage_of_construction']  + 1.05 * gdf['score_accident'] + 1.19 * gdf['score_engineering_communications'] + 1.14 # за текущее использование
-        gdf['total_physical_percent'] = round(gdf['total_physical_score'] / 7 * 100, 2)
+        gdf['total_physical_percent'] = round(gdf['total_physical_score'] / 8 * 100, 2)
         return(gdf)
 
 class AspectSpatial:
@@ -196,15 +196,15 @@ class AspectSpatial:
             points_within_polygon = shop[shop.geometry.within(hex.geometry[i])]
             # Группировка значений
             grouped_values = points_within_polygon.groupby('osmid')['amenity'].count().reset_index()
-            hex.loc[i, 'shop'] = grouped_values['amenity'].count()
-            grouped_values['shop'] = 0
+            hex.loc[i, 'count_shop'] = grouped_values['amenity'].count()
+            grouped_values['amenity'] = 0
 
             # Выбор точек внутри полигона
             points_within_polygon = public_transport[public_transport.geometry.within(hex.geometry[i])]
             # Группировка значений
             grouped_values = points_within_polygon.groupby('osmid')['amenity'].count().reset_index()
-            hex.loc[i, 'public_transport'] = grouped_values['amenity'].count()
-            grouped_values['public_transport'] = 0
+            hex.loc[i, 'count_public_transport'] = grouped_values['amenity'].count()
+            grouped_values['amenity'] = 0
         return(hex)
     
     def services_hex(gdf, hex):
@@ -269,16 +269,16 @@ class AspectSpatial:
         gdf['score_transport'] = 0
         for i in range(len(gdf)):
             if gdf.loc[i, 'count_shop'] >=1:
-                gdf['score_services'] += 0.5
+                gdf.loc[i,'score_services'] += 0.5
             
             if gdf.loc[i, 'count_cafe'] >=1:
-                gdf['score_services'] += 0.5
+                gdf.loc[i,'score_services'] += 0.5
             
             if gdf.loc[i, 'count_public_transport'] >=2:
-                gdf['score_transport'] += 1
+                gdf.loc[i,'score_transport'] += 1
         return(gdf)
 
-    def start_all(gdf,shop, cafe, public_transport,building):
+    def start_all(gdf,shop, cafe, public_transport,building, hex):
         # Fetching the territory boundary using the OSM ID for the specific relation.
         # The OSM ID refers to a particular area on OpenStreetMap.
         bounds = get_boundary(osm_id=1327509)  # OSM ID for https://www.openstreetmap.org/relation/1114252
@@ -303,7 +303,7 @@ class AspectSpatial:
         gdf = AspectSpatial.view_selection(gdf_vision,building,gdf)
         # Итоговый бал по аспекту
         gdf['total_spatial_score'] = 1.50 * gdf['score_services'] + 1.40 * gdf['score_transport'] + 1.10 * gdf['score_historicity']
-        gdf['total_spatial_percent'] = round(gdf['total_spatial_score'] / 3 * 100, 2)
+        gdf['total_spatial_percent'] = round(gdf['total_spatial_score'] / 4 * 100, 2)
         return(gdf)
     
 
@@ -353,7 +353,7 @@ class AspectEconomic:
 
         # Итоговый бал по аспекту
         gdf['total_economic_score'] = 1.22 * gdf['score_cadstral_value_building'] + 1.22 * gdf['score_cadstral_value_land'] + 1.78 * gdf['score_support_measures']
-        gdf['total_economic_percent'] = round(gdf['total_economic_score'] / 3 * 100, 2)
+        gdf['total_economic_percent'] = round(gdf['total_economic_score'] / 4.22 * 100, 2)
         return(gdf)
 
 class General:
@@ -366,7 +366,7 @@ class General:
         return(gdf)
     def calculate_scores(gdf):
         gdf['total_score'] = gdf['total_physical_score'] + gdf['total_spatial_score'] + gdf['total_law_score'] + gdf['total_economic_score']
-        gdf['total_percent'] = round(gdf['total_score'] / 16 * 100, 2)
+        gdf['total_percent'] = round(gdf['total_score'] / 20.22 * 100, 2)
         return(gdf)
     def risks_assastment(gdf):
         gdf['risks']=''
