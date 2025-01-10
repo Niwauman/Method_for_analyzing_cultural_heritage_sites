@@ -7,6 +7,8 @@ from objectnat import get_accessibility_isochrones
 from objectnat import get_walk_graph
 from objectnat import get_visibility
 
+from DataAnalysis import DataPreparation as DataPreparation
+
 import json
 # Закружаем критерии оценки
 with open("Example_files/criteria.json", encoding="UTF-8") as file_in:
@@ -52,7 +54,8 @@ class AspectLaw:
         gdf=AspectLaw.cadastral_integrity(gdf)
 
         # Итоговый бал по аспекту
-        gdf['total_law_score'] = gdf['score_cadastral_integrity'] + gdf['score_land_use'] + gdf['score_protection']
+        gdf['total_law_score'] = 1.25 * gdf['score_cadastral_integrity'] + 1.33 * gdf['score_land_use'] + 1.42 * gdf['score_protection']
+        gdf['total_law_percent'] = round(gdf['total_law_score'] / 3 * 100, 2)
         return(gdf)
 
 class AspectPhysical:
@@ -144,7 +147,8 @@ class AspectPhysical:
         gdf['score_engineering_communications'] = gdf['water_cold'] * 0.2 + gdf['water_hot']*0.2+gdf['water_out']*0.2+gdf['electricity']*0.2+gdf['fire_system']*0.2
 
         # Итоговый бал по аспекту
-        gdf['total_physical_score'] = gdf['score_deterioration']+ gdf['score_material'] + gdf['score_function'] + gdf['score_percentage_of_construction']  + gdf['score_accident'] + gdf['score_engineering_communications']
+        gdf['total_physical_score'] = 1.19 * gdf['score_deterioration'] + 1.05 * gdf['score_material'] + 1.10 * gdf['score_function'] + 1.29 * gdf['score_percentage_of_construction']  + 1.05 * gdf['score_accident'] + 1.19 * gdf['score_engineering_communications'] + 1.14 # за текущее использование
+        gdf['total_physical_percent'] = round(gdf['total_physical_score'] / 7 * 100, 2)
         return(gdf)
 
 class AspectSpatial:
@@ -154,25 +158,67 @@ class AspectSpatial:
 
         for i in range(len(gdf)):
             points = gpd.GeoDataFrame(geometry=[gdf.loc[i,'geometry']], crs=4326).to_crs(G_walk.graph['crs'])
-            isochrones, stops, routes = get_accessibility_isochrones(
-            points=points,
-            weight_type="time_min",
-            weight_value=10,
-            graph_nx=G_walk
-            )
             try:
-                gdf.loc[i, 'count_shop'] = len(shop[shop.geometry.within(isochrones.geometry[0])])
-            except AttributeError:
+                isochrones, stops, routes = get_accessibility_isochrones(
+                points=points,
+                weight_type="time_min",
+                weight_value=10,
+                graph_nx=G_walk
+                )
+                try:
+                    gdf.loc[i, 'count_shop'] = len(shop[shop.geometry.within(isochrones.geometry[0])])
+                except AttributeError:
+                    gdf.loc[i, 'count_shop'] = 0
+                try:
+                    gdf.loc[i, 'count_cafe'] = len(cafe[cafe.geometry.within(isochrones.geometry[0])])
+                except AttributeError:
+                    gdf.loc[i, 'count_cafe'] = 0
+                try:
+                    gdf.loc[i, 'count_public_transport'] = len(public_transport[public_transport.geometry.within(isochrones.geometry[0])])
+                except AttributeError:
+                    gdf.loc[i, 'count_public_transport'] = 0
+            except ValueError:
                 gdf.loc[i, 'count_shop'] = 0
-            try:
-                gdf.loc[i, 'count_cafe'] = len(cafe[cafe.geometry.within(isochrones.geometry[0])])
-            except AttributeError:
                 gdf.loc[i, 'count_cafe'] = 0
-            try:
-                gdf.loc[i, 'count_public_transport'] = len(public_transport[public_transport.geometry.within(isochrones.geometry[0])])
-            except AttributeError:
                 gdf.loc[i, 'count_public_transport'] = 0
             return(gdf)
+
+    def merge_hex_services(hex, cafe, shop, public_transport):
+
+        for i in range(len(hex)):
+                # Выбор точек внутри полигона
+            points_within_polygon = cafe[cafe.geometry.within(hex.geometry[i])]
+            # Группировка значений
+            grouped_values = points_within_polygon.groupby('osmid')['amenity'].count().reset_index()
+            hex.loc[i, 'count_cafe'] = grouped_values['amenity'].count()
+            grouped_values['amenity'] = 0
+
+            points_within_polygon = shop[shop.geometry.within(hex.geometry[i])]
+            # Группировка значений
+            grouped_values = points_within_polygon.groupby('osmid')['amenity'].count().reset_index()
+            hex.loc[i, 'shop'] = grouped_values['amenity'].count()
+            grouped_values['shop'] = 0
+
+            # Выбор точек внутри полигона
+            points_within_polygon = public_transport[public_transport.geometry.within(hex.geometry[i])]
+            # Группировка значений
+            grouped_values = points_within_polygon.groupby('osmid')['amenity'].count().reset_index()
+            hex.loc[i, 'public_transport'] = grouped_values['amenity'].count()
+            grouped_values['public_transport'] = 0
+        return(hex)
+    
+    def services_hex(gdf, hex):
+        gdf = gdf.to_crs('EPSG:32637')
+        hex = hex.to_crs('EPSG:32637')
+        for i in range(len(hex)):
+            poly = hex.loc[i, 'geometry']
+            for j in range(len(gdf)):
+                point = gdf.loc[j,'geometry']
+                if poly.contains(point):
+                    gdf.loc[j, 'count_cafe'] = hex.loc[i, 'count_cafe']
+                    gdf.loc[j, 'count_shop'] = hex.loc[i, 'count_shop']
+                    gdf.loc[j, 'count_public_transport'] = hex.loc[i, 'count_public_transport']
+        return(gdf)
 
     def vision(gdf_origin, obstacles,building_osm): # создание полигонов видимости
         gdf=gdf_origin.copy()
@@ -204,6 +250,20 @@ class AspectSpatial:
             gdf.loc[i, 'geometry'] = unioned_polygon
         return(gdf)
     
+    def view_selection(gdf_vision, building_osm, gdf):
+        gdf['score_historicity'] = 0
+        for i in range(len(gdf_vision)):
+            selection_buildings = gpd.overlay(building_osm, gdf_vision[gdf_vision.index == i], how='intersection')
+            if selection_buildings['_culture_heritage'].count() >= 1:
+                gdf.loc[i, 'score_historicity'] += 0.1
+            floor_mean = selection_buildings['_building_floor'].fillna(1).astype(int).mean()
+            if float(gdf.loc[i, 'Количество этажей (в том числе подземных)']) > float(floor_mean - 1) and float(gdf.loc[i, 'Количество этажей (в том числе подземных)']) < float(floor_mean + 1):
+                gdf.loc[i, 'score_historicity'] += 0.3
+            year_mean = selection_buildings['_building_year'].fillna(1917).astype(int).mean()
+            if gdf.loc[i, 'building_year'] > (year_mean - 20) and gdf.loc[i, 'building_year'] < (year_mean + 20):
+                gdf.loc[i, 'score_historicity'] += 0.3
+        return(gdf)
+    
     def score_spatial(gdf):
         gdf['score_services'] = 0
         gdf['score_transport'] = 0
@@ -223,16 +283,27 @@ class AspectSpatial:
         # The OSM ID refers to a particular area on OpenStreetMap.
         bounds = get_boundary(osm_id=1327509)  # OSM ID for https://www.openstreetmap.org/relation/1114252
         # Generating a walking graph for the defined boundary.
-        G_walk = get_walk_graph(polygon=bounds)
-        shop = shop.to_crs(G_walk.graph['crs'])
-        cafe = cafe.to_crs(G_walk.graph['crs'], inplace=True)
-        public_transport = public_transport.to_crs(G_walk.graph['crs'])
-        building = building.to_crs(G_walk.graph['crs'])
-        gdf = AspectSpatial.services(gdf,shop, cafe, public_transport, G_walk)
-        gdf=AspectSpatial.score_spatial(gdf)
+        #G_walk = get_walk_graph(polygon=bounds)
+        gdf = gdf.to_crs('EPSG:32637')
+        building = building.to_crs('EPSG:32637')
+        building = DataPreparation.merge_reestr_building(gdf, building)
+        
+        hex = hex.to_crs('EPSG:32637')
+        cafe = cafe.to_crs('EPSG:32637')
+        shop = shop.to_crs('EPSG:32637')
+        public_transport = public_transport.to_crs('EPSG:32637')
 
+        hex = AspectSpatial.merge_hex_services(gdf,cafe,shop,public_transport)
+        gdf = AspectSpatial.services_hex(gdf, hex)
+
+        gdf=AspectSpatial.score_spatial(gdf)
+        gdf_vision = AspectSpatial.vision(gdf, building, building)
+        gdf_vision = gdf_vision.to_crs('EPSG:32637')
+        gdf_vision['geometry'] = gdf_vision['geometry'].buffer(35)
+        gdf = AspectSpatial.view_selection(gdf_vision,building,gdf)
         # Итоговый бал по аспекту
-        gdf['total_spatial_score'] = gdf['score_services'] + gdf['score_transport']
+        gdf['total_spatial_score'] = 1.50 * gdf['score_services'] + 1.40 * gdf['score_transport'] + 1.10 * gdf['score_historicity']
+        gdf['total_spatial_percent'] = round(gdf['total_spatial_score'] / 3 * 100, 2)
         return(gdf)
     
 
@@ -272,7 +343,7 @@ class AspectEconomic:
     
     def support_program(gdf):
         for i in range(len(gdf)):
-            gdf.loc[i, 'score_support_measures'] = criteria[0]['economic_aspect']['support_measures'][gdf.loc[i,'actual_program']]
+            gdf.loc[i, 'score_support_measures'] = 1  #criteria[0]['economic_aspect']['support_measures'][gdf.loc[i,'actual_program']]
         return(gdf)
     
     def start_all(gdf):
@@ -281,7 +352,8 @@ class AspectEconomic:
         gdf=AspectEconomic.support_program(gdf)
 
         # Итоговый бал по аспекту
-        gdf['total_economic_score'] = gdf['score_cadstral_value_building'] + gdf['score_cadstral_value_land'] + gdf['score_support_measures']
+        gdf['total_economic_score'] = 1.22 * gdf['score_cadstral_value_building'] + 1.22 * gdf['score_cadstral_value_land'] + 1.78 * gdf['score_support_measures']
+        gdf['total_economic_percent'] = round(gdf['total_economic_score'] / 3 * 100, 2)
         return(gdf)
 
 class General:
@@ -294,6 +366,7 @@ class General:
         return(gdf)
     def calculate_scores(gdf):
         gdf['total_score'] = gdf['total_physical_score'] + gdf['total_spatial_score'] + gdf['total_law_score'] + gdf['total_economic_score']
+        gdf['total_percent'] = round(gdf['total_score'] / 16 * 100, 2)
         return(gdf)
     def risks_assastment(gdf):
         gdf['risks']=''

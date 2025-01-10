@@ -70,6 +70,20 @@ class DataPreparation:
             if len(str(gdf.loc[i, 'Год завершения строительства'])) < 2:
                 gdf.loc[i, 'Год завершения строительства'] = gdf.loc[i, 'Год ввода в эксплуатацию']
         return gdf
+    
+    def merge_reestr_building(gdf, building_osm):
+        for i in range(len(building_osm)):
+            poly = building_osm.loc[i,'geometry'].buffer(15)
+            for j in range(len(gdf)):
+                point = gdf.loc[j,'geometry']
+                if poly.contains(point):
+                    building_osm.loc[i,'_building_year'] = gdf.loc[j,'building_year']
+                    building_osm.loc[i,'_arch_style'] = gdf.loc[j,'arch_style']
+                    building_osm.loc[i,'_material'] = gdf.loc[j,'material']
+                    building_osm.loc[i,'_building_floor'] = gdf.loc[j,'Количество этажей (в том числе подземных)']
+                    building_osm.loc[i,'_culture_heritage'] = 1
+        return(building_osm)
+                    
 
 
 
