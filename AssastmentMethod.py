@@ -30,6 +30,7 @@ class AspectLaw:
 
     # permitted_land_use
     def permitted_land_use(gdf):
+        gdf['score_land_use'] = 0
         for i in range(len(gdf)):
             land_use_build = gdf.loc[i, 'land_use']
             for land_use_table in criteria[0]['law_aspect']['permitted_land_use']:
