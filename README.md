@@ -11,7 +11,7 @@
 ## Схема метода
 ![image](https://github.com/user-attachments/assets/90b575fb-d248-484d-8441-312aa29062eb)
 
-## Итоговые оценки
+## Итоговые баллы
 ![image](https://github.com/user-attachments/assets/c5f09703-79c3-4189-92b9-932cbf2ed3fe)
 
 
