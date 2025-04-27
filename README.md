@@ -17,7 +17,7 @@
 
 
 ## Схема метода
-![image](https://github.com/user-attachments/assets/90b575fb-d248-484d-8441-312aa29062eb)
+![image](https://github.com/user-attachments/assets/376a2aa9-1aaa-43ac-9ef3-aec2ad8d6e75)
 
 ## Итоговые баллы города Вологда
 ![image](https://github.com/user-attachments/assets/580a3fcb-92fd-4616-ad0d-218095a4d4b5)
