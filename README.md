@@ -28,7 +28,7 @@
 ## Внедрение метода
 ![image](https://github.com/user-attachments/assets/0f3eb116-bc99-4d99-9d9b-4b624dde5e57)
 
-
+[Итоговые данные](Ready_layers)
 
 ## Контакты
 - [Niwauman](https://t.me/Niwauman) - Никита
