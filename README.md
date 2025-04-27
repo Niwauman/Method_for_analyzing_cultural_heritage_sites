@@ -19,8 +19,15 @@
 ## Схема метода
 ![image](https://github.com/user-attachments/assets/90b575fb-d248-484d-8441-312aa29062eb)
 
-## Итоговые баллы
-![image](https://github.com/user-attachments/assets/c5f09703-79c3-4189-92b9-932cbf2ed3fe)
+## Итоговые баллы города Вологда
+![image](https://github.com/user-attachments/assets/580a3fcb-92fd-4616-ad0d-218095a4d4b5)
+
+## Итоговые баллы города Тотьма
+![image](https://github.com/user-attachments/assets/9d4c26f3-ed62-43cf-868f-c3e443b9b3b8)
+
+## Внедрение метода
+![image](https://github.com/user-attachments/assets/0f3eb116-bc99-4d99-9d9b-4b624dde5e57)
+
 
 
 ## Контакты
