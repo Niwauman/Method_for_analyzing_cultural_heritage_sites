@@ -31,6 +31,10 @@
 ## Итоговые баллы города Тотьма
 ![image](https://github.com/user-attachments/assets/9d4c26f3-ed62-43cf-868f-c3e443b9b3b8)
 
+Attempt | #1 | #2 | #3 | #4 | #5 | #6 | #7 | #8 | #9 | #10 | #11
+--- | --- | --- | --- |--- |--- |--- |--- |--- |--- |--- |---
+Seconds | 301 | 283 | 290 | 286 | 289 | 285 | 287 | 287 | 272 | 276 | 269
+
 ## Внедрение метода
 ![image](https://github.com/user-attachments/assets/0f3eb116-bc99-4d99-9d9b-4b624dde5e57)
 
